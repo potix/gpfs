@@ -1,0 +1,22 @@
+.title {
+        font-weight: bold;
+        font-size: 32px;
+}
+
+.center {
+        text-align: center;
+}
+
+.signInGoogleImage {
+        border: 0px;
+        width: 385px;
+        height: 95px;
+        background: url('../img/google_signin_buttons/web/2x/btn_google_signin_dark_normal_web@2x.png') left top no-repeat;
+}
+
+.signInGoogleImage:hover {
+        border: 0px;
+        width: 385px;
+        height: 95px;
+        background: url('../img/google_signin_buttons/web/2x/btn_google_signin_dark_focus_web@2x.png') left top no-repeat;
+}
