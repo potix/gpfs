@@ -13,3 +13,10 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+gpfs
+*.swp
+*.conf
+googleOauthClientIdSecret
+youtubeApiKey
+go.sum
