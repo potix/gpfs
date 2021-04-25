@@ -187,12 +187,12 @@ func (h *Handler) index(c *gin.Context) {
         sessionId := session.Get("sessionId")
         if headerUserAgent == "" || sessionUserAgent == nil || authType == nil || sessionId == nil {
                 log.Printf("luck of parameter (%v, %v, %v, %v)", headerUserAgent, sessionUserAgent, authType, sessionId)
-                h.indexHtml(c)
+		h.redirectHtml(c)
                 return
         }
         if headerUserAgent != sessionUserAgent.(string) {
                 log.Printf("user agent mismatch")
-                h.indexHtml(c)
+		h.redirectHtml(c)
                 return
         }
         ctx, cancel := context.WithTimeout(context.Background(), redisTimeout)
@@ -200,33 +200,33 @@ func (h *Handler) index(c *gin.Context) {
         _, err := h.rdb.Get(ctx, sessionId.(string)).Result()
         if err != nil {
                 log.Printf("can not get session information from redis (sessionId = %v)", sessionId.(string))
-                h.indexHtml(c)
+		h.redirectHtml(c)
                 return
         }
-        h.redirectHtml(c)
+        h.indexHtml(c)
 }
 
 func (h *Handler) logout(c *gin.Context) {
         session := sessions.Default(c)
         sessionId := session.Get("sessionId")
         if sessionId == nil {
-                h.indexHtml(c)
+		h.redirectHtml(c)
                 return
         }
         session.Clear()
         if err := session.Save(); err != nil {
                 log.Printf("can not save session: %v", err)
-                h.indexHtml(c)
+		h.redirectHtml(c)
                 return
         }
         ctx, cancel := context.WithTimeout(context.Background(), redisTimeout)
         defer cancel()
         if err := h.rdb.Del(ctx, sessionId.(string)).Err(); err != nil {
                 log.Printf("can not session information from redis: %v", err)
-                h.indexHtml(c)
+		h.redirectHtml(c)
                 return
         }
-        h.indexHtml(c)
+	h.redirectHtml(c)
         return
 }
 
