@@ -270,7 +270,7 @@ func NewHandler(resourcePath string, cookieAuthSecret string, cookieDomain strin
                 MaxAge:   baseOpts.cookieExpire,
                 Secure:   baseOpts.cookieSecure,
                 HttpOnly: true,
-                SameSite: http.SameSiteLaxMode,
+                SameSite: http.SameSiteStrictMode,
         })
         rdb := redis.NewClient(&redis.Options{
                 PoolSize: baseOpts.redisPoolSize,
