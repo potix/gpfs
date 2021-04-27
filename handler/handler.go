@@ -11,8 +11,9 @@ import (
         "github.com/gin-gonic/gin"
         "github.com/gin-contrib/sessions"
         "github.com/gin-contrib/sessions/cookie"
-        "github.com/potix/gpfs/helper"
         "github.com/go-redis/redis/v8"
+	"google.golang.org/api/youtube/v3"
+        "github.com/potix/utils/youtubehelper"
 )
 
 const (
@@ -24,7 +25,8 @@ type options struct {
         cookieEncryptSecret []byte
         cookieExpire        int
         cookieSecure        bool
-        youtubeHelper       *helper.YoutubeHelper
+	youtubeApiKey       string
+        youtubeVideoId      string
         redisUsername       string
         redisPassword       string
         redisDb             int
@@ -34,16 +36,17 @@ type options struct {
 
 func defaultOptions() *options {
         return &options{
-                verbose: false,
+                verbose:             false,
                 cookieEncryptSecret: nil,
-                cookieExpire: 3600,
-                cookieSecure: true,
-                youtubeHelper: nil,
-                redisUsername: "",
-                redisPassword: "",
-                redisDb: 0,
-                redisPoolSize: 10,
-                title: "AARS",
+                cookieExpire:        3600,
+                cookieSecure:        true,
+		youtubeApiKey:       "",
+		youtubeVideoId:      "",
+                redisUsername:       "",
+                redisPassword:       "",
+                redisDb:             0,
+                redisPoolSize:       10,
+                title:              "GPFS",
         }
 }
 
@@ -74,9 +77,10 @@ func CookieSecure(cookieSecure bool) Option {
         }
 }
 
-func YoutubeHelper(youtubeHelper *helper.YoutubeHelper) Option {
+func YoutubeVideo(youtubeApiKey string, youtubeVideoId string) Option {
         return func(opts *options) {
-                opts.youtubeHelper = youtubeHelper
+		opts.youtubeApiKey = youtubeApiKey
+                opts.youtubeVideoId = youtubeVideoId
         }
 }
 
@@ -125,12 +129,27 @@ type Handler struct {
         resourcePath     string
         redirectUrl      string
         cookieExpire     int
+        youtubeApiKey    string
+        youtubeVideoId   string
         store            cookie.Store
         rdb              *redis.Client
         title            string
 }
 
 func (h *Handler) Start() error {
+        if h.youtubeApiKey != "" && h.youtubeVideoId != "" {
+                helper := youtubehelper.NewYoutubeHelper(h.youtubeApiKey, youtubehelper.YoutubeHelperVerbose(h.verbose))
+                err := helper.VideosByVideoIds(
+                        []string{ h.youtubeVideoId },
+                        func(video *youtube.Video) {
+                                h.title = video.Snippet.Title
+                        },
+                        youtubehelper.YoutubeHelperVideosParts("id", "snippet"),
+                )
+                if err != nil {
+                        return fmt.Errorf("can not get video title of youtube: %v", err)
+                }
+        }
         return nil
 }
 
@@ -233,6 +252,9 @@ func (h *Handler) logout(c *gin.Context) {
 func NewHandler(resourcePath string, cookieAuthSecret string, cookieDomain string, redirectUrl string, redisAddrPort string, opts ...Option) (*Handler, error) {
         baseOpts := defaultOptions()
         for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
                 opt(baseOpts)
         }
         s := sha256.Sum256([]byte(cookieAuthSecret))
@@ -241,13 +263,6 @@ func NewHandler(resourcePath string, cookieAuthSecret string, cookieDomain strin
                 cookieStore = cookie.NewStore(s[:], baseOpts.cookieEncryptSecret)
         } else {
                 cookieStore = cookie.NewStore(s[:])
-        }
-        if baseOpts.youtubeHelper != nil {
-                title, err := baseOpts.youtubeHelper.GetVideoTitle()
-                if err != nil {
-                        return nil, fmt.Errorf("can not get youtube video title: %w", err)
-                }
-                baseOpts.title = title
         }
         cookieStore.Options(sessions.Options{
                 Path:     "/",
@@ -269,6 +284,8 @@ func NewHandler(resourcePath string, cookieAuthSecret string, cookieDomain strin
                 resourcePath: resourcePath,
                 redirectUrl: redirectUrl,
                 cookieExpire: baseOpts.cookieExpire,
+                youtubeApiKey: baseOpts.youtubeApiKey,
+                youtubeVideoId: baseOpts.youtubeVideoId,
                 store: cookieStore,
                 rdb: rdb,
                 title: baseOpts.title,

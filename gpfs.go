@@ -7,7 +7,6 @@ import (
         "github.com/potix/utils/server"
         "github.com/potix/utils/configurator"
         "github.com/potix/gpfs/handler"
-        "github.com/potix/gpfs/helper"
         "log"
         "log/syslog"
 )
@@ -86,7 +85,10 @@ func main() {
                 log.SetOutput(logger)
         }
         verboseLoadedConfig(&conf)
-        var youtubeHelper *helper.YoutubeHelper = nil
+        hVerboseOpt := handler.Verbose(conf.Verbose)
+        hCookieEncryptSecretOpt := handler.CookieEncryptSecret(conf.Handler.CookieEncryptSecret)
+        hCookieSecureOpt := handler.CookieSecure(conf.Handler.CookieSecure)
+        var hYoutubeVideoOpt handler.Option = nil
         if conf.Handler.YoutubeApiKey != "" && cmdArgs.videoId != "" {
                 youtubeApiKeys, err := configurator.LoadSecretFile(conf.Handler.YoutubeApiKey)
                 if err != nil {
@@ -95,13 +97,8 @@ func main() {
                 if len(youtubeApiKeys) != 1 {
                         log.Fatalf("no google api key")
                 }
-                yhVerboseOpt := helper.YoutubeHelperVerbose(conf.Verbose)
-                youtubeHelper = helper.NewYoutubeHelper(youtubeApiKeys[0], cmdArgs.videoId, yhVerboseOpt)
+                hYoutubeVideoOpt = handler.YoutubeVideo(youtubeApiKeys[0], cmdArgs.videoId)
         }
-        hVerboseOpt := handler.Verbose(conf.Verbose)
-        hCookieEncryptSecretOpt := handler.CookieEncryptSecret(conf.Handler.CookieEncryptSecret)
-        hCookieSecureOpt := handler.CookieSecure(conf.Handler.CookieSecure)
-        hYoutubeHelperOpt := handler.YoutubeHelper(youtubeHelper)
         hRedisPasswordOpt := handler.RedisPassword(conf.Handler.RedisPassword)
         hRedisDbOpt := handler.RedisDb(conf.Handler.RedisDb)
         hTitleOpt := handler.Title(conf.Handler.Title)
@@ -114,7 +111,7 @@ func main() {
                 hVerboseOpt,
                 hCookieEncryptSecretOpt,
                 hCookieSecureOpt,
-                hYoutubeHelperOpt,
+                hYoutubeVideoOpt,
                 hRedisPasswordOpt,
                 hRedisDbOpt,
                 hTitleOpt,
